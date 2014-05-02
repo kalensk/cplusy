@@ -1,7 +1,9 @@
 Tools:
 C
 Redis
-
+Google Test
+CMake
+Beej's Guide to Network Programming
 
 
 people in world or irc cna give +1 or -1 to people
