@@ -1,0 +1,6 @@
+*sublime*
+*.a
+*.o
+src/plusy
+src/plusy
+.DS_Store
