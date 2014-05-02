@@ -2,5 +2,5 @@
 *.a
 *.o
 src/plusy
-src/plusy
+src/plusy.dSYM/
 .DS_Store
