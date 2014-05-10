@@ -6,12 +6,31 @@
 #include <sys/types.h>
 #include <netdb.h>
 
+#include <errno.h>
 #include <arpa/inet.h>
 
+#include "main.h"
 
 
-void create_connection(const char* irc_server, const char* port) {
+NameInfo* create_nameInfo(const char* nick, const char* realName) {
+    NameInfo* name = (NameInfo*) malloc(sizeof(NameInfo));
 
+    name->nick = nick;
+    name->realName = realName;
+
+    return name;
+}
+
+ServerInfo* create_serverInfo(const char* server, const char* port) {
+    ServerInfo* serverObj = (ServerInfo*) malloc(sizeof(ServerInfo));
+
+    serverObj->name = server;
+    serverObj->port = port;
+
+    return serverObj;
+}
+
+void create_connection(Irc* irc) {
     // getaddrinfo()
     struct addrinfo *resolved_addr = NULL;
     struct addrinfo hints;
@@ -21,7 +40,7 @@ void create_connection(const char* irc_server, const char* port) {
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
 
-    int status = getaddrinfo(irc_server, port, &hints, &resolved_addr);
+    int status = getaddrinfo(irc->server->name, irc->server->port, &hints, &resolved_addr);
     if (status != 0) {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
         exit(1);
@@ -53,16 +72,24 @@ void create_connection(const char* irc_server, const char* port) {
 
 
         // socket()
-        int fd = socket(addr->ai_family, SOCK_STREAM, 0);
+        int fd = irc->server->fd = socket(addr->ai_family, SOCK_STREAM, 0);
         if (fd < 0) {
             fprintf(stderr, "socket() error: %s\n", gai_strerror(fd));
+            exit(1);
         }
 
         // connect()
-        status = connect(fd, addr->ai_addr, addr->ai_addrlen);
+        printf("status before connect() = %d\n", status);
+        printf("socket fd = %d\n", fd);
+        status = connect(irc->server->fd, addr->ai_addr, addr->ai_addrlen);
         if (status < 0) {
+            printf("status after connect() = %d with errorno => %s\n", status, strerror(errno));
             fprintf(stderr, "connect() error: %s\n", gai_strerror(status));
+            shutdown(fd, 2);
+            printf("close socket fd = %d\n", fd);
+            continue;
         }
+        startup_sequence(irc);
     }
 
     freeaddrinfo(resolved_addr);
@@ -70,12 +97,42 @@ void create_connection(const char* irc_server, const char* port) {
 
 }
 
+void startup_sequence(Irc* irc) {
+    char buffer[512] = {0};
+
+    send_command_with_arg(irc, "NICK", irc->name->nick);
+
+    sprintf(buffer, "%s %s %s :%s", irc->name->nick, irc->name->nick, irc->server->name, irc->name->realName);
+    send_command_with_arg(irc, "USER", buffer); //USER nick + nick + server + : + realName
+}
+
+void send_command(Irc* irc, const char* command) {
+    send_command_with_arg(irc, command, NULL);
+}
+
+void send_command_with_arg(Irc* irc, const char* command, const char* arg) {
+    send(irc->server->fd, command, strlen(command), 0);
+    send(irc->server->fd, arg, strlen(arg), 0);
+    send(irc->server->fd, "\r\n", 2, 0);
+}
+
+
+
 int main(int argc, char** argv) {
-
-
-
+    NameInfo* name;
+    ServerInfo* server;
+    Irc* irc;
+    
     printf("Hello world\n");
-    create_connection("irc.mzima.net", "6665");
+
+    name = create_nameInfo("plusy", "plus one bot");
+    server = create_serverInfo("irc.he.net", "6667");
+
+    irc = (Irc*) malloc(sizeof(Irc));
+    irc->server = server;
+    irc->name = name;
+
+    create_connection(irc);
 }
 
 
