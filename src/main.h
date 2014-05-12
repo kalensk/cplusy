@@ -2,7 +2,6 @@
 #define MAIN
 
 typedef struct {
-    int fd;
     const char* name;
     const char* port;
     const char* channel;
@@ -78,7 +77,7 @@ typedef enum {
     WHO,
     WHOIS,
     WHOWAS
-} Command;
+} Command_t;
 
 NameInfo* create_nameInfo(const char* nick, const char* realName);
 ServerInfo* create_serverInfo(const char* server, const char* port);
